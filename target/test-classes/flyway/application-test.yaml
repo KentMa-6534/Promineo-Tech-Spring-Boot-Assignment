@@ -1,0 +1,7 @@
+spring:
+  datasource:
+    url: jdbc:f2:mem:jeep
+logging:
+  level:
+    root: warn
+    '[com.promineotech]': debug
