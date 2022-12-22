@@ -1,14 +1,18 @@
-/**
- * 
- */
 package com.promineotech.jeep.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import java.math.BigDecimal;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
@@ -37,10 +41,11 @@ import lombok.Getter;
 class FetchJeepTest {
   @Autowired
   private JdbcTemplate jdbcTemplate;
+  @Disabled
   @Test
   void testDb(){
     int numRows = JdbcTestUtils.countRowsInTable(jdbcTemplate, "customers");
-    System.out.println("num="+numRows);
+    System.out.println("num=" + numRows);
   }
 
   @Autowired
@@ -49,7 +54,6 @@ class FetchJeepTest {
   @LocalServerPort
   private int serverPort;
 
-  @Disabled
   @Test
   void testThatJeepsAreReturnedWhenAValidModelAndTrimAreSupplied() {
    //Given: when a valid model, trim and URI
@@ -64,9 +68,83 @@ class FetchJeepTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     
     //And: the actual list returned is the same as the expected list
-    List<Jeep> expected = buildExpected();
-    System.out.println(expected);
-    assertThat(response.getBody()).isEqualTo(expected);
+    List<Jeep> actual = response.getBody();
+    List<Jeep> expected = buildExpected();   
+    
+    assertThat(actual).isEqualTo(expected);
+  }
+  
+  @Test
+  void testThatAnErrorMessageisReturnedWhenAnInvalidTrimIsSupplied() {
+   //Given: when a valid model, trim and URI
+    JeepModel model = JeepModel.WRANGLER;
+    String trim = "Invalid Value";
+    String uri = String.format("http://localhost:%d/jeeps?model=%s&trim=%s", serverPort, model, trim);
+    
+   //When: a connection is made to the URI
+    ResponseEntity<Map<String, Object>> response = restTemplate.exchange(uri, HttpMethod.GET, null, new ParameterizedTypeReference<>() {});
+    
+   //Then: a not found (404) status code is returned
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    
+    //And: an error message is returned
+    Map<String, Object> error = response.getBody();
+    
+    assertErrorMessageValid(error, HttpStatus.OK);
+  }
+  
+  @Test
+  void testThatAnErrorMessageisReturnedWhenAnUnknownTrimIsSupplied() {
+   //Given: when a valid model, trim and URI
+    JeepModel model = JeepModel.WRANGLER;
+    String trim = "Unknown Value";
+    String uri = String.format("http://localhost:%d/jeeps?model=%s&trim=%s", serverPort, model, trim);
+    
+   //When: a connection is made to the URI
+    ResponseEntity<Map<String, Object>> response = restTemplate.exchange(uri, HttpMethod.GET, null, new ParameterizedTypeReference<>() {});
+    
+   //Then: a not found (404) status code is returned
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    
+    //And: an error message is returned
+    Map<String, Object> error = response.getBody();
+    
+    assertErrorMessageValid(error, HttpStatus.NOT_FOUND);
+  }
+  
+  @ParameterizedTest
+  @MethodSource("com.promineotech.jeep.controller.FetchJeepTest#parametersForInvalidInput")
+  void testThatAnErrorMessageisReturnedWhenAnInvalidValueIsSupplied(String model, String trim, String reason) {
+   //Given: when a valid model, trim and URI
+    String uri = String.format("http://localhost:%d/jeeps?model=%s&trim=%s", serverPort, model, trim);
+    
+   //When: a connection is made to the URI
+    ResponseEntity<Map<String, Object>> response = restTemplate.exchange(uri, HttpMethod.GET, null, new ParameterizedTypeReference<>() {});
+    
+   //Then: a not found (404) status code is returned
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    
+    //And: an error message is returned
+    Map<String, Object> error = response.getBody();
+    
+    assertErrorMessageValid(error,HttpStatus.BAD_REQUEST);
+  }
+
+  static Stream<Arguments> parametersForInvalidInput(){
+    return Stream.of(
+        arguments("WRANGLER", "Blorp", "Trim contains non-alpha-numeric characters")
+    );
+  }
+  
+  protected void assertErrorMessageValid(Map<String, Object> error, HttpStatus status) {
+    //@formatter:off
+    assertThat(error)
+        .containsKey("message")
+        .containsEntry("status code", status.value())
+        .containsEntry("uri","/jeeps")
+        .containsKey("timestamp")
+        .containsEntry("reason", status.getReasonPhrase());
+    //@formatter:on
   }
 
   private List<Jeep> buildExpected() {
@@ -76,18 +154,20 @@ class FetchJeepTest {
     list.add(Jeep.builder()
         .modelId(JeepModel.WRANGLER)
         .trimLevel("Sport")
-        .numDoors(2)
-        .wheelSize(17)
-        .basePrice(new BigDecimal("28475.00"))
-        .build());
-    list.add(Jeep.builder()
-        .modelId(JeepModel.WRANGLER)
-        .trimLevel("Sport")
         .numDoors(4)
         .wheelSize(17)
         .basePrice(new BigDecimal("31975.00"))
         .build());
+    
+    list.add(Jeep.builder()
+        .modelId(JeepModel.WRANGLER)
+        .trimLevel("Sport")
+        .numDoors(2)
+        .wheelSize(17)
+        .basePrice(new BigDecimal("28475.00"))
+        .build());
     //formatter:on
+    Collections.sort(list);
     return list;
   }
   
