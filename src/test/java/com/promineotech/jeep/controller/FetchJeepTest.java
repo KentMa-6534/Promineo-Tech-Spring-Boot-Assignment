@@ -80,15 +80,7 @@ class FetchJeepTest {
   private List<Jeep> buildExpected() {
     List<Jeep> list = new LinkedList<>();
     
-    //formatter:off
-    list.add(Jeep.builder()
-        .modelId(JeepModel.WRANGLER)
-        .trimLevel("Sport")
-        .numDoors(4)
-        .wheelSize(17)
-        .basePrice(new BigDecimal("31975.00"))
-        .build());
-    
+    //formatter:off   
     list.add(Jeep.builder()
         .modelId(JeepModel.WRANGLER)
         .trimLevel("Sport")
@@ -96,8 +88,14 @@ class FetchJeepTest {
         .wheelSize(17)
         .basePrice(new BigDecimal("28475.00"))
         .build());
+    list.add(Jeep.builder()
+        .modelId(JeepModel.WRANGLER)
+        .trimLevel("Sport")
+        .numDoors(4)
+        .wheelSize(17)
+        .basePrice(new BigDecimal("31975.00"))
+        .build());
     //formatter:on
-    Collections.sort(list);
     return list;
   }
   
