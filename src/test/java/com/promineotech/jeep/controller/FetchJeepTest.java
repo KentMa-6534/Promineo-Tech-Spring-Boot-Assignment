@@ -41,7 +41,7 @@ import lombok.Getter;
 class FetchJeepTest {
   @Autowired
   private JdbcTemplate jdbcTemplate;
-  @Disabled
+  
   @Test
   void testDb(){
     int numRows = JdbcTestUtils.countRowsInTable(jdbcTemplate, "customers");
@@ -49,6 +49,7 @@ class FetchJeepTest {
   }
 
   @Autowired
+  @Getter
   private TestRestTemplate restTemplate;
   
   @LocalServerPort
@@ -69,84 +70,13 @@ class FetchJeepTest {
     
     //And: the actual list returned is the same as the expected list
     List<Jeep> actual = response.getBody();
-    List<Jeep> expected = buildExpected();   
+    List<Jeep> expected = buildExpected();  
     
-    assertThat(actual).isEqualTo(expected);
+    actual.forEach(jeep -> jeep.setModelPK(null));
+    
+    assertThat(response.getBody()).isEqualTo(expected);
   }
   
-  @Test
-  void testThatAnErrorMessageisReturnedWhenAnInvalidTrimIsSupplied() {
-   //Given: when a valid model, trim and URI
-    JeepModel model = JeepModel.WRANGLER;
-    String trim = "Invalid Value";
-    String uri = String.format("http://localhost:%d/jeeps?model=%s&trim=%s", serverPort, model, trim);
-    
-   //When: a connection is made to the URI
-    ResponseEntity<Map<String, Object>> response = restTemplate.exchange(uri, HttpMethod.GET, null, new ParameterizedTypeReference<>() {});
-    
-   //Then: a not found (404) status code is returned
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-    
-    //And: an error message is returned
-    Map<String, Object> error = response.getBody();
-    
-    assertErrorMessageValid(error, HttpStatus.OK);
-  }
-  
-  @Test
-  void testThatAnErrorMessageisReturnedWhenAnUnknownTrimIsSupplied() {
-   //Given: when a valid model, trim and URI
-    JeepModel model = JeepModel.WRANGLER;
-    String trim = "Unknown Value";
-    String uri = String.format("http://localhost:%d/jeeps?model=%s&trim=%s", serverPort, model, trim);
-    
-   //When: a connection is made to the URI
-    ResponseEntity<Map<String, Object>> response = restTemplate.exchange(uri, HttpMethod.GET, null, new ParameterizedTypeReference<>() {});
-    
-   //Then: a not found (404) status code is returned
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-    
-    //And: an error message is returned
-    Map<String, Object> error = response.getBody();
-    
-    assertErrorMessageValid(error, HttpStatus.NOT_FOUND);
-  }
-  
-  @ParameterizedTest
-  @MethodSource("com.promineotech.jeep.controller.FetchJeepTest#parametersForInvalidInput")
-  void testThatAnErrorMessageisReturnedWhenAnInvalidValueIsSupplied(String model, String trim, String reason) {
-   //Given: when a valid model, trim and URI
-    String uri = String.format("http://localhost:%d/jeeps?model=%s&trim=%s", serverPort, model, trim);
-    
-   //When: a connection is made to the URI
-    ResponseEntity<Map<String, Object>> response = restTemplate.exchange(uri, HttpMethod.GET, null, new ParameterizedTypeReference<>() {});
-    
-   //Then: a not found (404) status code is returned
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-    
-    //And: an error message is returned
-    Map<String, Object> error = response.getBody();
-    
-    assertErrorMessageValid(error,HttpStatus.BAD_REQUEST);
-  }
-
-  static Stream<Arguments> parametersForInvalidInput(){
-    return Stream.of(
-        arguments("WRANGLER", "Blorp", "Trim contains non-alpha-numeric characters")
-    );
-  }
-  
-  protected void assertErrorMessageValid(Map<String, Object> error, HttpStatus status) {
-    //@formatter:off
-    assertThat(error)
-        .containsKey("message")
-        .containsEntry("status code", status.value())
-        .containsEntry("uri","/jeeps")
-        .containsKey("timestamp")
-        .containsEntry("reason", status.getReasonPhrase());
-    //@formatter:on
-  }
-
   private List<Jeep> buildExpected() {
     List<Jeep> list = new LinkedList<>();
     
