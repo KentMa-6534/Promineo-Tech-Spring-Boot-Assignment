@@ -39,14 +39,14 @@ import lombok.Getter;
     config = @SqlConfig(encoding = "utf-8"))
 
 class FetchJeepTest {
-  @Autowired
-  private JdbcTemplate jdbcTemplate;
-  
-  @Test
-  void testDb(){
-    int numRows = JdbcTestUtils.countRowsInTable(jdbcTemplate, "customers");
-    System.out.println("num=" + numRows);
-  }
+//  @Autowired
+//  private JdbcTemplate jdbcTemplate;
+//  
+//  @Test
+//  void testDb(){
+//    int numRows = JdbcTestUtils.countRowsInTable(jdbcTemplate, "customers");
+//    System.out.println("num=" + numRows);
+//  }
 
   @Autowired
   @Getter
@@ -77,6 +77,23 @@ class FetchJeepTest {
     assertThat(response.getBody()).isEqualTo(expected);
   }
   
+  @Test
+  void testThatAnErrorMessageIsReturnedWhenAnInvalidTrimIsSupplied() {
+   //Given: when a valid model, trim and URI
+    JeepModel model = JeepModel.WRANGLER;
+    String trim = "Invalid Value";
+    String uri = String.format("http://localhost:%d/jeeps?model=%s&trim=%s", serverPort, model, trim);
+    
+   //When: a connection is made to the URI
+    ResponseEntity<?> response = restTemplate.exchange(uri, HttpMethod.GET, null, new ParameterizedTypeReference<>() {});
+    
+   //Then: a not found (404) status code is returned
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    
+    //And: an error message is returned 
+
+  }
+  
   private List<Jeep> buildExpected() {
     List<Jeep> list = new LinkedList<>();
     
@@ -96,6 +113,7 @@ class FetchJeepTest {
         .basePrice(new BigDecimal("31975.00"))
         .build());
     //formatter:on
+    Collections.sort(list);
     return list;
   }
   

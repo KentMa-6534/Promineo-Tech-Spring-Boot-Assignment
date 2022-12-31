@@ -24,13 +24,21 @@ public class DefaultJeepSalesService implements JeepSalesService {
   
   @Autowired
   private JeepSalesDao jeepSalesDao;
-  
+  @Transactional(readOnly = true)
   @Override
   public List<Jeep> fetchJeeps(JeepModel model, String trim) {
     // TODO Auto-generated method stub
     log.info("The fetchJeeps method was called with model={} and trim ={}", model, trim);
     
-    return jeepSalesDao.fetchJeeps(model, trim);
+    List<Jeep> jeeps = jeepSalesDao.fetchJeeps(model, trim);
+    
+    if(jeeps.isEmpty()) {
+      String msg = String.format("No Jeeps found with model=%s and trim =%s", model, trim);
+      throw new NoSuchElementException(msg);
+    }
+    
+    Collections.sort(jeeps);
+    return jeeps;
   }
 
 }
